@@ -29,11 +29,11 @@
           "parameters": [
             {
               "name": "pubStartDate",
-              "value": "={{ $now.minus({ days: 1 }).toUTC().toFormat('yyyy-LL-dd\\'T\\'HH:mm:ss.SSS') + 'Z' }}"
+              "value": "={{ $now.minus({ days: 1 }).toUTC().toISO() }}"
             },
             {
               "name": "pubEndDate",
-              "value": "={{ $now.toUTC().toFormat('yyyy-LL-dd\\'T\\'HH:mm:ss.SSS') + 'Z' }}"
+              "value": "={{ $now.toUTC().toISO() }}"
             },
             {
               "name": "resultsPerPage",
@@ -117,7 +117,7 @@
     },
     {
       "parameters": {
-        "content": "## Import and validate before activation\n\nThis is an inactive intake starter, not an auto-broadcaster.\n\n1. Import, then run manually. Verify both source responses and CVE/KEV matching.\n2. Add a durable dedupe table keyed by CVE ID + modified timestamp.\n3. Add a review surface (e.g. private Sheet/Data Table) with status defaulting to PENDING.\n4. Build a separate approval-triggered workflow. Require an authorized reviewer to set APPROVED and preview the exact message.\n5. Only then connect a Telegram Bot API credential and a private staging channel.\n6. For production, least privilege: grant the bot only channel posting rights; store credentials in n8n credential storage.\n\nDo not send directly from the schedule. Do not use AI to approve/publish. Keep the public dashboard labelled as demo until live data is wired and verified.",
+        "content": "## Import and validate before activation\n\nThis is an inactive intake starter, not an auto-broadcaster.\n\n1. Import, then run manually. Verify both source responses and CVE/KEV matching.\n2. Add a durable dedupe table keyed by CVE ID + modified timestamp.\n3. Add a review surface (e.g. private Sheet/Data Table) with status defaulting to PENDING.\n4. Build a separate approval-triggered workflow. Require an authorized reviewer to set APPROVED and preview the exact message.\n5. Only then connect a Telegram Bot API credential and a private staging channel.\n6. For production, least privilege: grant the bot only channel posting rights; store credentials in n8n credential storage.\n\nDo not send directly from the schedule. Do not use AI to approve/publish. Keep demo/live status and source timestamps explicit in the public dashboard.",
         "height": 370,
         "width": 430
       },
