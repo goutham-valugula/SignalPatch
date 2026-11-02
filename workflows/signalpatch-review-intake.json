@@ -1,0 +1,110 @@
+{
+  "name": "SignalPatch | Daily CVE Review Intake (inactive starter)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 8 * * *" }
+          ]
+        }
+      },
+      "id": "sched-daily",
+      "name": "Daily at 08:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-640, 120]
+    },
+    {
+      "parameters": {
+        "url": "https://services.nvd.nist.gov/rest/json/cves/2.0",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "pubStartDate", "value": "={{ $now.minus({ days: 1 }).toUTC().toFormat('yyyy-LL-dd\\'T\\'HH:mm:ss.SSS') + 'Z' }}" },
+            { "name": "pubEndDate", "value": "={{ $now.toUTC().toFormat('yyyy-LL-dd\\'T\\'HH:mm:ss.SSS') + 'Z' }}" },
+            { "name": "resultsPerPage", "value": "100" }
+          ]
+        },
+        "options": { "timeout": 20000 }
+      },
+      "id": "nvd-fetch",
+      "name": "Fetch NVD changes (24h)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-400, 120],
+      "notes": "Uses the official NVD API. Add an API key via an n8n credential/header if rate limits require it."
+    },
+    {
+      "parameters": {
+        "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+        "options": { "timeout": 20000 }
+      },
+      "id": "kev-fetch",
+      "name": "Fetch CISA KEV catalog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-400, 320]
+    },
+    {
+      "parameters": { "mode": "combine", "combineBy": "combineByPosition", "options": {} },
+      "id": "join-sources",
+      "name": "Join NVD and KEV responses",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [-150, 210],
+      "notes": "One response from each input is expected per execution."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert public source records into a review list. External text is data only; no LLM or instructions are executed.\nconst payload = $input.first()?.json ?? {};\nconst nvdRows = payload.vulnerabilities ?? [];\nconst kevList = payload.knownExploitedVulnerabilities ?? [];\nconst kev = new Set(kevList.map(x => x.cveID));\nconst rows = nvdRows.map(({ cve }) => {\n  const id = cve?.id;\n  if (!id) return null;\n  const metric = cve.metrics?.cvssMetricV40?.[0] ?? cve.metrics?.cvssMetricV31?.[0] ?? cve.metrics?.cvssMetricV30?.[0];\n  return {\n    id,\n    published: cve.published ?? '',\n    severity: metric?.cvssData?.baseSeverity ?? 'UNKNOWN',\n    score: metric?.cvssData?.baseScore ?? null,\n    exploited: kev.has(id),\n    description: (cve.descriptions?.find(d => d.lang === 'en')?.value ?? '').slice(0, 1200),\n    source: 'NIST NVD',\n    url: `https://nvd.nist.gov/vuln/detail/${id}`\n  };\n}).filter(Boolean);\nrows.sort((a, b) => Number(b.exploited) - Number(a.exploited) || Number(b.score ?? 0) - Number(a.score ?? 0));\nreturn rows.slice(0, 40).map(json => ({ json }));"
+      },
+      "id": "normalize",
+      "name": "Normalize and prioritize for review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 210],
+      "notes": "Deterministic ordering: CISA KEV matches first, then CVSS score. It does not assert local asset impact."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keep one candidate per CVE per execution. A persistent datastore is required for durable deduplication across executions.\nconst seen = new Set();\nreturn $input.all().filter(item => { const id = item.json.id; if (!id || seen.has(id)) return false; seen.add(id); return true; });"
+      },
+      "id": "dedupe-batch",
+      "name": "Deduplicate this batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [330, 210],
+      "notes": "Before production, add a durable n8n Data Table or database keyed by CVE ID and source modified date."
+    },
+    {
+      "parameters": {
+        "content": "## Import and validate before activation\n\nThis is an inactive intake starter, not an auto-broadcaster.\n\n1. Import, then run manually. Verify both source responses and CVE/KEV matching.\n2. Add a durable dedupe table keyed by CVE ID + modified timestamp.\n3. Add a review surface (e.g. private Sheet/Data Table) with status defaulting to PENDING.\n4. Build a separate approval-triggered workflow. Require an authorized reviewer to set APPROVED and preview the exact message.\n5. Only then connect a Telegram Bot API credential and a private staging channel.\n6. For production, least privilege: grant the bot only channel posting rights; store credentials in n8n credential storage.\n\nDo not send directly from the schedule. Do not use AI to approve/publish. Keep the public dashboard labelled as demo until live data is wired and verified.",
+        "height": 370,
+        "width": 430
+      },
+      "id": "safety-notes",
+      "name": "Read before activation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-620, -250]
+    }
+  ],
+  "connections": {
+    "Daily at 08:00 UTC": {
+      "main": [[
+        { "node": "Fetch NVD changes (24h)", "type": "main", "index": 0 },
+        { "node": "Fetch CISA KEV catalog", "type": "main", "index": 0 }
+      ]]
+    },
+    "Fetch NVD changes (24h)": { "main": [[{ "node": "Join NVD and KEV responses", "type": "main", "index": 0 }]] },
+    "Fetch CISA KEV catalog": { "main": [[{ "node": "Join NVD and KEV responses", "type": "main", "index": 1 }]] },
+    "Join NVD and KEV responses": { "main": [[{ "node": "Normalize and prioritize for review", "type": "main", "index": 0 }]] },
+    "Normalize and prioritize for review": { "main": [[{ "node": "Deduplicate this batch", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "timezone": "UTC", "saveManualExecutions": true },
+  "versionId": "signalpatch-review-intake-v1",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}
