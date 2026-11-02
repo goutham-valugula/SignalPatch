@@ -37,7 +37,7 @@ function normalizeAdvisories(nvd:unknown,kev:unknown):Advisory[]{
  }).filter((item):item is Advisory=>Boolean(item)).sort((a,b)=>Number(b.exploited)-Number(a.exploited)||severityRank[a.severity]-severityRank[b.severity])
 }
 function App(){
- const [theme,setTheme]=useState<'dark'|'light'>(()=>{try{return localStorage.getItem('signalpatch-theme')==='light'?'light':'dark'}catch{return'dark'}})
+ const [theme,setTheme]=useState<'dark'|'light'>(()=>{try{return localStorage.getItem('signalpatch-theme')==='dark'?'dark':'light'}catch{return'light'}})
  const [items,setItems]=useState<Advisory[]>([]),[query,setQuery]=useState(''),[filter,setFilter]=useState('All advisories'),[selected,setSelected]=useState<Advisory|null>(null),[saved,setSaved]=useState<string[]>([]),[tab,setTab]=useState('All advisories'),[notice,setNotice]=useState(''),[loading,setLoading]=useState(false),[live,setLive]=useState(false),[lastUpdated,setLastUpdated]=useState(''),[feedError,setFeedError]=useState('')
  const rows=useMemo(()=>items.filter(a=>{
   const q=query.toLowerCase(); const match=!q||`${a.id} ${a.vendor} ${a.product} ${a.title} ${a.summary}`.toLowerCase().includes(q)

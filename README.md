@@ -1,51 +1,87 @@
-# SignalPatch
+<div align="center">
+  <a href="https://goutham-valugula.github.io/SignalPatch/">
+    <img src="assets/signalpatch-banner.svg" alt="SignalPatch — Triage the signal. Verify the source." width="100%" />
+  </a>
 
-**Know what needs attention.**
+  <p><strong>A live vulnerability review desk for small IT teams.</strong><br />Fresh NVD records, matched against CISA's Known Exploited Vulnerabilities catalog.</p>
 
-SignalPatch is an original security-review workspace for small IT teams. It is designed around a practical question: *what should we verify first, and where is the evidence?* It brings CVSS severity, CISA known-exploitation status, NVD product scope, recommended verification steps, and primary-source links into one calm review surface.
+  <p>
+    <a href="https://goutham-valugula.github.io/SignalPatch/"><strong>↗ Open SignalPatch</strong></a>
+    &nbsp;·&nbsp;
+    <a href="#run-locally">Run locally</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/goutham-valugula/SignalPatch/issues">Report an issue</a>
+  </p>
 
-## Live preview
+  <p>
+    <img alt="Live source: NIST NVD" src="https://img.shields.io/badge/Live%20source-NIST%20NVD-347a76?style=flat-square" />
+    <img alt="Live source: CISA KEV" src="https://img.shields.io/badge/Live%20source-CISA%20KEV-ef8f76?style=flat-square" />
+    <img alt="No sample advisories" src="https://img.shields.io/badge/Records-Live%20only-536c63?style=flat-square" />
+    <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-8b79b4?style=flat-square" /></a>
+  </p>
+</div>
 
-[Open SignalPatch](https://goutham-valugula.github.io/SignalPatch/) · [Source repository](https://github.com/goutham-valugula/SignalPatch)
+## See the live review desk
 
-On first load, the dashboard uses clearly marked illustrative sample records. Press **Load live data** to fetch the latest 24 hours of NVD disclosures (up to 100 records) and cross-reference them with the CISA Known Exploited Vulnerabilities catalog. The KEV data is fetched from [CISA's official GitHub mirror](https://github.com/cisagov/kev-data), which mirrors the catalog CISA publishes. Requests run in the visitor's browser only when requested; there is no background polling, API key, user account, or app server.
+<a href="https://goutham-valugula.github.io/SignalPatch/"><img src="assets/signalpatch-preview.png" alt="SignalPatch live vulnerability review dashboard, with source-backed advisories and a priority brief." width="100%" /></a>
 
-## What it does
+*Interface preview. Advisory records load from NVD and CISA in the browser; the preview image is illustrative of the interface, not a live feed.*
 
-- Searchable advisory stream with severity filters, exploited-only and saved views.
-- CVE brief with the NVD record, CVSS severity, CISA KEV match, listed CPE product/version scope, and a recommended verification step.
-- One-click copy of a human-review broadcast draft. It does not send messages.
-- Responsive dark interface with explicit demo/live state and feed errors.
-- An inactive [n8n workflow starter](workflows/signalpatch-review-intake.json) for scheduled source intake and review-workflow design.
+## Prioritize what to verify
 
-## Start locally
+SignalPatch brings recent vulnerability disclosures and known-exploitation signals into one readable review surface. Open a record, inspect its source and listed product scope, then decide what your team should verify. It is a triage aid—not an asset scanner or a verdict that a system is vulnerable.
+
+### What happens when you open it
+
+1. The browser requests NVD CVEs published in the last 24 hours (up to 100 records).
+2. It fetches the current CISA KEV catalog and matches its CVE IDs against those NVD records.
+3. You can filter, search, save records locally in the current page, and open the NVD record for source review.
+4. For a live record, prepare a source-linked broadcast draft to copy and review. SignalPatch does not send it.
+
+There are **no sample or fallback vulnerability records**. If either public source cannot be fetched, the dashboard clears the list and displays the error so old results cannot look current.
+
+## A calmer security desk
+
+- **Warm, readable workspace:** an editorial light theme with mint, evergreen, and coral accents, plus a dark-mode toggle.
+- **Live-source state:** refresh time, feed status, live record counts, CISA KEV matches, and an explicit unavailable/error state.
+- **Evidence at hand:** CVE source links and NVD-listed product/version scope where available.
+- **Useful review tools:** search, severity filter, exploited-only view, saved view, and copyable draft for human review.
+- **Responsive layout:** use the same dashboard on desktop and narrower screens.
+
+## Run locally
+
+Requires Node.js and npm.
 
 ```sh
-npm install
+git clone https://github.com/goutham-valugula/SignalPatch.git
+cd SignalPatch
+npm ci
 npm run dev
 ```
 
-Create a production build with `npm run build`.
+Open the local URL printed by Vite. A production build is available with:
 
-## n8n and Telegram roadmap
+```sh
+npm run build
+npm run preview
+```
 
-Import the workflow JSON into n8n and keep it inactive while validating it. The starter fetches public NVD and CISA KEV data and normalizes a review list. It does not call an LLM, send Telegram messages, or contain credentials. Before operational use, validate response shapes and date expressions against your n8n version, add durable deduplication, and connect a private review queue.
+SignalPatch is a static React/Vite app. NVD and CISA requests are made by the visitor's browser; no SignalPatch account, API key, backend, or automatic background polling is required.
 
-Telegram should be a separate, approval-triggered workflow: an authorized reviewer approves and previews a specific draft, an idempotency key prevents duplicate posts, and n8n credential storage holds the bot token. Use a private staging channel first and grant the bot only the posting permission it needs. Never route the scheduled intake directly to public publishing.
+## Sources and limitations
 
-## Trust boundaries
+- [NIST National Vulnerability Database API](https://services.nvd.nist.gov/rest/json/cves/2.0) — recent CVE records and available CVSS/CPE details.
+- [CISA Known Exploited Vulnerabilities catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) — exploitation-in-the-wild signal, fetched from [CISA's public data mirror](https://github.com/cisagov/kev-data).
+- Direct browser requests depend on source availability, CORS, and rate limits. If a request fails, the current view reports that and shows no cached or sample records.
+- Only up to 100 NVD records from the previous 24 hours are requested. This is not a complete feed or continuous monitoring service.
+- NVD CPE scope can be absent or incomplete. A listed product is not proof that your installed version is affected.
+- No asset inventory is connected; SignalPatch does not determine exposure, assign organization-specific risk, or replace vendor advisories and incident response.
+- The optional n8n workflow starter in [`workflows/`](workflows/) is inactive and is not used by the live dashboard. No Telegram channel is connected and no messages are sent.
 
-- NVD and CISA records are public signals, not a complete view of your organization’s risk.
-- The live browser fetch may fail because of source availability or rate limits; the app then keeps the last/current sample visible and explains the failure.
-- Only the first 100 NVD CVEs published in the last 24 hours are requested. This is not a complete vulnerability feed or monitoring service.
-- NVD CPE scope is shown when supplied; it is not proof that a local installation is affected. Unknown scope stays unknown.
-- Severity is not asset risk. No organization-specific inventory is configured.
-- Verify version ranges, fixes, and exploitation details at the linked vendor/CISA source before acting.
-- No exploit instructions are run or published. This is not incident response, compliance certification, or a patch oracle.
+## Built with
 
-## Next product milestones
+React · TypeScript · Vite · lucide-react
 
-1. Add source timestamps, pagination, and feed health/retry visibility.
-2. Add an optional local product/version inventory and conservative affected-range matching.
-3. Add review states, audit history, durable duplicate suppression, and preview.
-4. Connect approved Telegram publishing only after a channel and private staging flow are configured.
+## License
+
+[MIT](LICENSE)
